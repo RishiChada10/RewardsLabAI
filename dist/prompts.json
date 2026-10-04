@@ -1,0 +1,290 @@
+{
+  "_about": "Single source of truth for every Claude instruction, schema, and tool. Read by api/index.py (server, Anthropic API) and dist/app.js (published artifact, viewer's Claude account).",
+  "domainContext": "You support product managers at a US credit-card issuer who are screening new\nrewards-card concepts for the mass-affluent segment (roughly $100K-$1M in\ninvestable assets). The workspace has a deterministic economics engine with\nthese mechanics:\n\n- Customers earn points per $1 in six categories: dining, travel, groceries,\n  gas, entertainment, general. Rates are between 0.5x and 10x.\n- Customer value = points x customer value per point + annual benefit value x\n  the persona's benefit utilization - annual fee. Year one adds the welcome offer.\n- Issuer contribution = interchange on spend + annual fee - redeemed points\n  (after breakage) x issuer cost per point - annual benefit cost. Year one also\n  subtracts the welcome-offer cost.\n- Cost-to-spend = (rewards cost + benefit cost) / annual spend.\n- Out of scope: revolving interest, credit and fraud losses, servicing,\n  acquisition, attrition, taxes. Outputs are concept-screening estimates.\n\nAll personas and data are synthetic. Never claim regulatory or legal approval.",
+  "parse": {
+    "instructions": "Task: turn the product manager's plain-language brief into a complete card\nconfiguration. Start from the current configuration and change only what the\nbrief asks for or clearly implies. Respect hard limits literally (\"below $150\"\nmeans the fee must be under 150). Infer sensible values for implied intent:\n\"relationship benefits\" or \"premium\" suggests a richer benefit package; a\nyounger, digitally active segment suggests dining, travel, and entertainment.\n\nFor each field you change, add a rationale entry explaining why in one short\nsentence that cites the brief. List assumptions you made where the brief was\nsilent or ambiguous. If something in the brief cannot be modeled by this\nengine (for example APR, credit limits, or a bank-account bundle), say so in\n`unsupported` rather than forcing it into a field.",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "card": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Short concept name, at most 6 words."
+            },
+            "annualFee": {
+              "type": "number",
+              "description": "Annual fee in dollars, 0-1000."
+            },
+            "welcomePoints": {
+              "type": "number",
+              "description": "Welcome offer in points, 0-250000."
+            },
+            "annualBenefitValue": {
+              "type": "number",
+              "description": "Customer-perceived dollar value of annual benefits (credits, lounge access, insurance)."
+            },
+            "annualBenefitCost": {
+              "type": "number",
+              "description": "Issuer's dollar cost of providing those benefits; usually 40-70% of perceived value."
+            },
+            "bonusRates": {
+              "type": "object",
+              "description": "Points per $1 for each category, 0.5-10. Use multiples of 0.5.",
+              "properties": {
+                "dining": {
+                  "type": "number"
+                },
+                "travel": {
+                  "type": "number"
+                },
+                "groceries": {
+                  "type": "number"
+                },
+                "gas": {
+                  "type": "number"
+                },
+                "entertainment": {
+                  "type": "number"
+                },
+                "general": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "dining",
+                "travel",
+                "groceries",
+                "gas",
+                "entertainment",
+                "general"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "name",
+            "annualFee",
+            "welcomePoints",
+            "annualBenefitValue",
+            "annualBenefitCost",
+            "bonusRates"
+          ],
+          "additionalProperties": false
+        },
+        "rationale": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "string"
+              },
+              "change": {
+                "type": "string",
+                "description": "e.g. '$125 -> $95'"
+              },
+              "why": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "field",
+              "change",
+              "why"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unsupported": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "card",
+        "rationale",
+        "assumptions",
+        "unsupported"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "optimize": {
+    "instructions": "Task: you are a rewards-product strategist. Find a card configuration that\nmeets every objective for the target persona, while staying a credible product\n(no 10x on everything, no $0 fee with lounge-level benefits).\n\nWork in a loop:\n1. Form a hypothesis about which levers matter for this persona's spending.\n2. Call `simulate_card` with a complete configuration and that hypothesis. The\n   simulator is the only source of truth for numbers; do not compute results\n   yourself.\n3. Read the result and the constraint gaps, then adjust.\n\nYou have at most 5 simulations. Prefer changes a product committee could\ndefend, and change only a few levers per attempt so the effect is attributable.\nWhen an attempt meets every objective, or the budget is spent, call\n`submit_recommendation` with the attempt you recommend (even if no attempt met\nevery objective, recommend the closest one and say what would have to give).\nKeep any text between tool calls to one short sentence.",
+    "tools": [
+      {
+        "name": "simulate_card",
+        "description": "Run the deterministic economics simulator for the target persona on a complete card configuration. Returns customer value, issuer contribution, cost-to-spend, and the gap to each objective. Interchange, breakage, and point values are fixed by the analyst.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "hypothesis": {
+              "type": "string",
+              "description": "One sentence: what you are changing and why you expect it to help."
+            },
+            "annualFee": {
+              "type": "number",
+              "description": "Annual fee in dollars, 0-1000."
+            },
+            "welcomePoints": {
+              "type": "number",
+              "description": "Welcome offer in points, 0-250000."
+            },
+            "annualBenefitValue": {
+              "type": "number",
+              "description": "Customer-perceived dollar value of annual benefits (credits, lounge access, insurance)."
+            },
+            "annualBenefitCost": {
+              "type": "number",
+              "description": "Issuer's dollar cost of providing those benefits; usually 40-70% of perceived value."
+            },
+            "bonusRates": {
+              "type": "object",
+              "description": "Points per $1 for each category, 0.5-10. Use multiples of 0.5.",
+              "properties": {
+                "dining": {
+                  "type": "number"
+                },
+                "travel": {
+                  "type": "number"
+                },
+                "groceries": {
+                  "type": "number"
+                },
+                "gas": {
+                  "type": "number"
+                },
+                "entertainment": {
+                  "type": "number"
+                },
+                "general": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "dining",
+                "travel",
+                "groceries",
+                "gas",
+                "entertainment",
+                "general"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "hypothesis",
+            "annualFee",
+            "welcomePoints",
+            "annualBenefitValue",
+            "annualBenefitCost",
+            "bonusRates"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "submit_recommendation",
+        "description": "Finish the run by recommending one simulated attempt to the product manager.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "attemptNumber": {
+              "type": "integer",
+              "description": "The attempt number returned by simulate_card."
+            },
+            "headline": {
+              "type": "string",
+              "description": "At most 10 words."
+            },
+            "summary": {
+              "type": "string",
+              "description": "Two or three sentences on why this design works."
+            },
+            "tradeoffs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "What the issuer or customer gives up."
+            },
+            "nextValidation": {
+              "type": "string",
+              "description": "The single most useful real-world test to run next."
+            }
+          },
+          "required": [
+            "attemptNumber",
+            "headline",
+            "summary",
+            "tradeoffs",
+            "nextValidation"
+          ],
+          "additionalProperties": false
+        }
+      }
+    ]
+  },
+  "claims": {
+    "instructions": "Task: you are a first-pass reviewer helping a marketing team and compliance\npartner. Compare a proposed marketing claim against the configured card terms\nand the simulated results for every persona. Flag statements that are\ninconsistent with the configuration, that depend on the welcome offer or on a\nspecific spending pattern without saying so, that ignore the annual fee in a\nnet-value statement, or that use absolute language (\"all\", \"always\",\n\"unlimited\") the terms do not support. Cite the specific numbers that support\neach finding. Deterministic rule checks have already run; confirm, refine, or\nadd to them, but do not contradict the simulator's numbers.\n\nThen propose a rewrite that keeps the marketing intent but is supported by the\nmodel. You assist human review; you never approve a claim.",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ]
+              },
+              "title": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "string",
+                "description": "The configured term or simulated number this rests on."
+              }
+            },
+            "required": [
+              "severity",
+              "title",
+              "detail",
+              "evidence"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "suggestedRewrite": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "findings",
+        "suggestedRewrite"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "chat": {
+    "instructions": "Task: answer the product manager's questions about the concept currently in\nthe workspace. Ground every number in the workspace snapshot provided with the\nlatest question; if the snapshot does not contain what is needed, say what\nyou would need to simulate. Explain drivers in plain business language, point\nout risks the model excludes when they matter to the answer, and suggest a\nconcrete next step when useful. Keep answers under 150 words unless asked for\nmore. Plain text with short paragraphs or simple dashes; no markdown headings\nor tables."
+  }
+}

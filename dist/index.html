@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b1324" />
+    <meta
+      name="description"
+      content="A transparent concept-testing workspace for credit-card rewards products."
+    />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="stylesheet" href="./styles.css" />
+    <title>RewardsLab AI</title>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <a class="brand" href="#workspace" aria-label="RewardsLab AI home">
+          <span class="brand-mark" aria-hidden="true">RL</span>
+          <span>
+            <strong>RewardsLab AI</strong>
+            <small>Concept studio</small>
+          </span>
+        </a>
+        <div class="topbar-actions">
+          <span class="mode-badge" id="mode-badge"><i></i> <span id="mode-label">Checking AI…</span></span>
+          <label class="mode-switch" id="mode-switch" hidden>
+            <input type="checkbox" id="live-toggle" checked />
+            <span>Live AI</span>
+          </label>
+          <button class="ghost-button" id="reset-button" type="button">Reset scenario</button>
+        </div>
+      </header>
+
+      <main id="workspace">
+        <section class="intro-row" aria-labelledby="page-title">
+          <div>
+            <p class="eyebrow">Credit card concept testing</p>
+            <h1 id="page-title">Turn a product brief into a testable rewards design.</h1>
+          </div>
+          <p class="intro-copy">
+            Configure a card, compare customer and issuer economics, then optimize against measurable constraints.
+          </p>
+        </section>
+
+        <nav class="step-tabs" aria-label="Workspace sections">
+          <button class="step-tab active" data-target="design-panel" type="button"><span>1</span> Design</button>
+          <button class="step-tab" data-target="simulation-panel" type="button"><span>2</span> Simulate</button>
+          <button class="step-tab" data-target="optimize-panel" type="button"><span>3</span> Optimize</button>
+          <button class="step-tab" data-target="claims-panel" type="button"><span>4</span> Claims check</button>
+          <button class="step-tab" data-target="chat-panel" type="button"><span>5</span> Ask the analyst</button>
+        </nav>
+
+        <section class="panel active" id="design-panel">
+          <div class="two-column-layout">
+            <div class="stack">
+              <article class="card brief-card">
+                <div class="card-heading">
+                  <div>
+                    <p class="section-label">Product brief</p>
+                    <h2>Describe the card you want to test</h2>
+                  </div>
+                  <span class="small-badge" id="parse-badge">Structured output</span>
+                </div>
+                <label class="sr-only" for="brief-input">Product brief</label>
+                <textarea id="brief-input" rows="5">Design a points-based card for younger mass-affluent customers. Prioritize travel and dining, include relationship benefits, and keep the annual fee below $150.</textarea>
+                <div class="brief-footer">
+                  <p id="brief-help">Offline mode uses a repeatable parser so the demo never depends on a network call.</p>
+                  <button class="primary-button" id="parse-button" type="button">Create card rules</button>
+                </div>
+                <div class="change-list hidden" id="parse-summary" aria-live="polite"></div>
+              </article>
+
+              <article class="card">
+                <div class="card-heading compact">
+                  <div>
+                    <p class="section-label">Editable rules</p>
+                    <h2>Card configuration</h2>
+                  </div>
+                  <button class="text-button" id="apply-rules-button" type="button">Apply changes</button>
+                </div>
+                <div class="form-grid">
+                  <label class="field field-wide">
+                    <span>Concept name</span>
+                    <input id="card-name" type="text" />
+                  </label>
+                  <label class="field">
+                    <span>Annual fee</span>
+                    <div class="input-prefix"><b>$</b><input id="annual-fee" type="number" min="0" step="25" /></div>
+                  </label>
+                  <label class="field">
+                    <span>Welcome points</span>
+                    <input id="welcome-points" type="number" min="0" step="5000" />
+                  </label>
+                  <label class="field">
+                    <span>Benefit value</span>
+                    <div class="input-prefix"><b>$</b><input id="benefit-value" type="number" min="0" step="10" /></div>
+                  </label>
+                  <label class="field">
+                    <span>Issuer benefit cost</span>
+                    <div class="input-prefix"><b>$</b><input id="benefit-cost" type="number" min="0" step="10" /></div>
+                  </label>
+                  <label class="field">
+                    <span>Interchange rate</span>
+                    <div class="input-suffix"><input id="interchange-rate" type="number" min="0" max="5" step="0.05" /><b>%</b></div>
+                  </label>
+                  <label class="field">
+                    <span>Breakage rate</span>
+                    <div class="input-suffix"><input id="breakage-rate" type="number" min="0" max="75" step="1" /><b>%</b></div>
+                  </label>
+                  <label class="field">
+                    <span>Issuer cost per point</span>
+                    <div class="input-suffix"><input id="issuer-point-cost" type="number" min="0.1" max="3" step="0.05" /><b>¢</b></div>
+                  </label>
+                  <label class="field">
+                    <span>Customer value per point</span>
+                    <div class="input-suffix"><input id="customer-point-value" type="number" min="0.5" max="3" step="0.25" /><b>¢</b></div>
+                  </label>
+                </div>
+                <div class="divider"></div>
+                <p class="field-group-title">Points per $1 by category</p>
+                <div class="category-grid" id="category-rate-fields"></div>
+              </article>
+            </div>
+
+            <aside class="stack">
+              <article class="card dark-card">
+                <p class="section-label light">Live preview</p>
+                <div class="credit-card" aria-label="Card concept preview">
+                  <div class="credit-card-top"><span>REWARDSLAB</span><i></i></div>
+                  <div class="chip" aria-hidden="true"></div>
+                  <div>
+                    <strong id="preview-name">Mass Affluent Explorer</strong>
+                    <small id="preview-summary">3x travel · 3x dining · $125 annual fee</small>
+                  </div>
+                </div>
+                <dl class="preview-metrics">
+                  <div><dt>Welcome</dt><dd id="preview-welcome">50,000 pts</dd></div>
+                  <div><dt>Top earn</dt><dd id="preview-top-rate">3x</dd></div>
+                  <div><dt>Annual fee</dt><dd id="preview-fee">$125</dd></div>
+                </dl>
+              </article>
+
+              <article class="card assumptions-card">
+                <div class="card-heading compact">
+                  <div>
+                    <p class="section-label">Model assumptions</p>
+                    <h2>Transparent by design</h2>
+                  </div>
+                </div>
+                <div class="assumption-row"><span>Interchange rate</span><strong id="assumption-interchange">1.80%</strong></div>
+                <div class="assumption-row"><span>Breakage</span><strong id="assumption-breakage">15%</strong></div>
+                <div class="assumption-row"><span>Issuer cost / point</span><strong id="assumption-cost">0.90¢</strong></div>
+                <div class="assumption-row"><span>Customer value / point</span><strong id="assumption-value">1.25¢</strong></div>
+                <p class="note">Revolving interest, losses, fraud, servicing, taxes, and adoption are outside this concept-screening model.</p>
+              </article>
+            </aside>
+          </div>
+        </section>
+
+        <section class="panel" id="simulation-panel">
+          <div class="simulation-layout">
+            <aside class="card persona-panel">
+              <div class="card-heading compact">
+                <div><p class="section-label">Synthetic profiles</p><h2>Select a persona</h2></div>
+              </div>
+              <div id="persona-list" class="persona-list"></div>
+              <p class="note">Fictional profiles calibrated for demonstration; no customer or employer data is used.</p>
+            </aside>
+
+            <div class="stack">
+              <article class="card">
+                <div class="card-heading results-heading">
+                  <div><p class="section-label">Simulation</p><h2 id="results-title">Young professional results</h2></div>
+                  <div class="toggle-group" role="group" aria-label="Results period">
+                    <button type="button" class="toggle active" data-period="ongoing">Ongoing</button>
+                    <button type="button" class="toggle" data-period="yearOne">Year one</button>
+                  </div>
+                </div>
+                <div class="kpi-grid">
+                  <div class="kpi"><span>Customer net value</span><strong id="kpi-customer">—</strong><small id="kpi-customer-note">After annual fee</small></div>
+                  <div class="kpi"><span>Issuer contribution</span><strong id="kpi-contribution">—</strong><small>Illustrative contribution</small></div>
+                  <div class="kpi"><span>Annual points</span><strong id="kpi-points">—</strong><small>Before breakage</small></div>
+                  <div class="kpi"><span>Cost / spend</span><strong id="kpi-cost-ratio">—</strong><small>Rewards + benefits</small></div>
+                </div>
+              </article>
+
+              <article class="card">
+                <div class="card-heading compact"><div><p class="section-label">Value bridge</p><h2>Where the economics come from</h2></div></div>
+                <div id="value-bridge" class="value-bridge"></div>
+              </article>
+
+              <article class="card table-card">
+                <div class="card-heading compact"><div><p class="section-label">Portfolio comparison</p><h2>All personas</h2></div></div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Persona</th><th>Annual spend</th><th>Customer value</th><th>Issuer contribution</th><th>Cost/spend</th></tr></thead>
+                    <tbody id="portfolio-table"></tbody>
+                  </table>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="optimize-panel">
+          <div class="two-column-layout optimize-layout">
+            <aside class="card objective-card">
+              <p class="section-label">Agent objective</p>
+              <h2>Define a measurable target</h2>
+              <label class="field"><span>Target persona</span><select id="objective-persona"></select></label>
+              <label class="field"><span>Minimum customer value</span><div class="input-prefix"><b>$</b><input id="objective-value" type="number" value="1100" step="25" /></div></label>
+              <label class="field"><span>Maximum cost / spend</span><div class="input-suffix"><input id="objective-cost" type="number" value="3" step="0.1" /><b>%</b></div></label>
+              <label class="field"><span>Minimum ongoing contribution</span><div class="input-prefix"><b>$</b><input id="objective-contribution" type="number" value="0" step="25" /></div></label>
+              <button class="primary-button full-button" id="optimize-button" type="button">Run optimization loop</button>
+              <p class="note" id="optimize-note">The optimizer can adjust category earn rates, annual fee, and modeled benefit cost. It stops after five attempts.</p>
+            </aside>
+
+            <div class="stack">
+              <article class="card agent-card">
+                <div class="card-heading">
+                  <div><p class="section-label">Bounded agent loop</p><h2>Attempt history</h2></div>
+                  <span class="small-badge" id="agent-status">Ready</span>
+                </div>
+                <div class="empty-state" id="attempts-empty">
+                  <span>↗</span>
+                  <strong>No optimization run yet</strong>
+                  <p>Set an objective and let the agent test up to five configurations.</p>
+                </div>
+                <div class="attempts-list hidden" id="attempts-list"></div>
+              </article>
+              <article class="card recommendation-card hidden" id="recommendation-card">
+                <div class="recommendation-body"><p class="section-label">Recommended configuration</p><h2 id="recommendation-title">—</h2><p id="recommendation-copy">—</p><div id="recommendation-detail"></div></div>
+                <button class="primary-button" id="accept-recommendation" type="button">Apply recommendation</button>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="claims-panel">
+          <div class="two-column-layout">
+            <article class="card">
+              <p class="section-label">Optional red team</p>
+              <h2>Check a marketing claim against the model</h2>
+              <p class="card-copy">This lightweight check looks for obvious differences between configured terms and calculated value.</p>
+              <label class="field claim-field"><span>Proposed marketing claim</span><textarea id="claim-input" rows="5">Earn 3x points on all travel and receive more than $1,500 in first-year value.</textarea></label>
+              <button class="primary-button" id="check-claim-button" type="button">Run claims check</button>
+              <p class="note">This feature supports human review. It does not provide legal advice or regulatory approval.</p>
+            </article>
+            <article class="card">
+              <div class="card-heading compact"><div><p class="section-label">Review results</p><h2>Potential inconsistencies</h2></div></div>
+              <div class="claim-results" id="claim-results">
+                <div class="empty-state compact-empty"><strong>No claim checked yet</strong><p>Results will appear here with the model evidence behind each finding.</p></div>
+              </div>
+              <div class="rewrite-box hidden" id="claim-rewrite">
+                <p class="section-label">Suggested rewrite</p>
+                <p id="claim-rewrite-text"></p>
+                <button class="text-button" id="use-rewrite-button" type="button">Check this version</button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel" id="chat-panel">
+          <div class="two-column-layout">
+            <article class="card chat-card">
+              <div class="card-heading compact">
+                <div><p class="section-label">Grounded in this workspace</p><h2>Ask the analyst</h2></div>
+                <button class="text-button" id="clear-chat-button" type="button">Clear</button>
+              </div>
+              <div class="chat-log" id="chat-log" aria-live="polite">
+                <div class="empty-state compact-empty" id="chat-empty"><strong>Ask about the current concept</strong><p>Every answer uses the live card configuration and simulation results as context.</p></div>
+              </div>
+              <form class="chat-form" id="chat-form">
+                <label class="sr-only" for="chat-input">Question</label>
+                <input id="chat-input" type="text" maxlength="1000" placeholder="Why does the family persona get less value than the traveler?" autocomplete="off" />
+                <button class="primary-button" id="chat-send" type="submit">Ask</button>
+              </form>
+            </article>
+            <aside class="card">
+              <p class="section-label">Try asking</p>
+              <div class="suggestion-list" id="chat-suggestions">
+                <button type="button" class="suggestion">Which persona is least profitable, and what is driving it?</button>
+                <button type="button" class="suggestion">What happens to issuer economics if breakage falls to 5%?</button>
+                <button type="button" class="suggestion">Summarize this concept for a product committee in three bullets.</button>
+                <button type="button" class="suggestion">What does this model leave out that could change the decision?</button>
+              </div>
+              <p class="note" id="chat-note">Live AI is required for chat. Offline mode keeps the rest of the workspace usable.</p>
+            </aside>
+          </div>
+        </section>
+
+        <footer>
+          <p><strong>RewardsLab AI</strong> · Concept prototype using synthetic data and illustrative assumptions.</p>
+          <p>AI proposes. The simulator verifies. A human decides.</p>
+        </footer>
+      </main>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

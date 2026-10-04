@@ -1,0 +1,8 @@
+.venv/
+.env
+__pycache__/
+.vercel/
+.DS_Store
+build/
+*.zip
+/RewardsLab_AI_Chat_Local/

@@ -1,0 +1,5 @@
+{
+  "outputDirectory": "dist",
+  "functions": { "api/index.py": { "includeFiles": "dist/prompts.json" } },
+  "rewrites": [{ "source": "/api/:route", "destination": "/api/index?route=:route" }]
+}
