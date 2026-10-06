@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import sys
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs
@@ -39,7 +41,9 @@ def live_enabled() -> bool:
 def client() -> anthropic.Anthropic:
     global _client
     if _client is None:
-        _client = anthropic.Anthropic(timeout=90.0, max_retries=2)
+        # Pasted keys often carry a stray newline or quotes, which break the request header.
+        key = os.environ.get("ANTHROPIC_API_KEY", "").strip().strip('"').strip("'") or None
+        _client = anthropic.Anthropic(api_key=key, timeout=90.0, max_retries=2)
     return _client
 
 
@@ -78,6 +82,19 @@ def compact(value) -> str:
 # ---------------------------------------------------------------------------
 
 
+KEY_PATTERN = re.compile(r"sk-ant-[\w-]+")
+
+
+def log_error(kind: str, error: Exception) -> None:
+    """Write the cause chain to the server log (Vercel Logs), with any key redacted."""
+    chain = []
+    while error is not None and len(chain) < 4:
+        message = KEY_PATTERN.sub("sk-ant-[redacted]", str(error))[:300]
+        chain.append(f"{type(error).__name__}: {message}")
+        error = error.__cause__ or error.__context__
+    print(f"[rewardslab] {kind} error: " + " <- ".join(chain), file=sys.stderr)
+
+
 def call_claude(**params):
     """One Messages API call with refusal fallbacks and typed error handling."""
     try:
@@ -96,6 +113,7 @@ def call_claude(**params):
     except anthropic.APIStatusError as error:
         raise TaskError(f"AI service error ({error.status_code}).", 502) from error
     except anthropic.APIConnectionError as error:
+        log_error("connection", error)
         raise TaskError("Could not reach the AI service.", 503) from error
 
     if response.stop_reason == "refusal":
