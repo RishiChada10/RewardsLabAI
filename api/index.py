@@ -88,31 +88,31 @@ def call_claude(**params):
             **params,
         )
     except anthropic.AuthenticationError as error:
-        raise TaskError("The Anthropic API key was rejected.", 502) from error
+        raise TaskError("The AI service rejected the API key.", 502) from error
     except anthropic.RateLimitError as error:
-        raise TaskError("Claude is rate limited right now. Try again shortly.", 503) from error
+        raise TaskError("The AI service is busy right now. Try again shortly.", 503) from error
     except anthropic.BadRequestError as error:
-        raise TaskError(f"Claude rejected the request: {error.message}", 502) from error
+        raise TaskError(f"The AI service rejected the request: {error.message}", 502) from error
     except anthropic.APIStatusError as error:
-        raise TaskError(f"Claude API error ({error.status_code}).", 502) from error
+        raise TaskError(f"AI service error ({error.status_code}).", 502) from error
     except anthropic.APIConnectionError as error:
-        raise TaskError("Could not reach the Claude API.", 503) from error
+        raise TaskError("Could not reach the AI service.", 503) from error
 
     if response.stop_reason == "refusal":
-        raise TaskError("Claude declined this request.", 422)
+        raise TaskError("The AI declined this request.", 422)
     if response.stop_reason == "max_tokens":
-        raise TaskError("Claude's response was cut off. Try a shorter input.", 502)
+        raise TaskError("The AI's response was cut off. Try a shorter input.", 502)
     return response
 
 
 def first_json(response) -> dict:
     text = next((block.text for block in response.content if block.type == "text"), None)
     if text is None:
-        raise TaskError("Claude returned no structured output.", 502)
+        raise TaskError("The AI returned no structured output.", 502)
     try:
         return json.loads(text)
     except json.JSONDecodeError as error:
-        raise TaskError("Claude returned invalid JSON.", 502) from error
+        raise TaskError("The AI returned invalid JSON.", 502) from error
 
 
 def sanitize_content(blocks: list[dict]) -> list[dict]:
@@ -280,7 +280,7 @@ def task_chat(payload: dict) -> dict:
     )
     answer = "\n\n".join(block.text for block in response.content if block.type == "text").strip()
     if not answer:
-        raise TaskError("Claude returned an empty answer.", 502)
+        raise TaskError("The AI returned an empty answer.", 502)
     return {"answer": answer}
 
 

@@ -149,7 +149,7 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(api.sanitize_content(blocks[:3]), blocks[:3])
 
     def test_claims_and_chat(self):
-        claims = {"findings": [{"severity": "medium", "title": "t", "detail": "d", "evidence": "e"}], "suggestedRewrite": "r"}
+        claims = {"verdict": "needs_changes", "findings": [{"severity": "medium", "title": "t", "detail": "d", "evidence": "e"}], "suggestedRewrite": "r"}
         self.use(message([{"type": "text", "text": json.dumps(claims)}]))
         self.assertEqual(post("claims", {"claim": "c", "card": CARD, "portfolio": [{}]}), (200, claims))
         self.assertEqual(post("claims", {"claim": "c", "card": CARD, "portfolio": []})[0], 400)

@@ -5,4 +5,4 @@ __pycache__/
 .DS_Store
 build/
 *.zip
-/RewardsLab_AI_Chat_Local/
+/RewardsLab_AI_Chat_Local*/

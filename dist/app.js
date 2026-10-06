@@ -71,24 +71,23 @@ async function detectAI() {
 function renderMode() {
   const live = liveMode();
   const provider = state.ai.provider;
-  const modelName = provider?.label || "Claude";
   $("#mode-badge").classList.toggle("offline", !live);
   $("#mode-label").textContent = state.ai.checking
-    ? "Connecting to Claude…"
+    ? "Connecting to AI…"
     : live
-      ? `Live AI · ${modelName}`
+      ? "Live AI"
       : provider
         ? "Offline mode (switched off)"
         : "Offline mode";
-  $("#mode-badge").title = live ? "Claude is handling parsing, optimization, claims review, and chat." : state.ai.reason;
+  $("#mode-badge").title = live ? "AI is handling parsing, optimization, claims review, and chat." : state.ai.reason;
   $("#mode-switch").hidden = !provider;
   $("#live-toggle").checked = state.ai.enabled;
-  $("#parse-badge").textContent = live ? "Claude · structured output" : "Offline parser";
+  $("#parse-badge").textContent = live ? "AI · structured output" : "Offline parser";
   $("#brief-help").textContent = live
-    ? `${modelName} turns the brief into structured, editable rules and explains each change.`
-    : "Offline mode uses a repeatable parser so the demo never depends on a network call.";
+    ? "The AI turns the brief into structured, editable rules and explains each change."
+    : `Offline mode uses a repeatable parser so the demo never depends on a network call.${state.ai.reason ? ` ${state.ai.reason}` : ""}`;
   $("#optimize-note").textContent = live && provider.canOptimize
-    ? `${modelName} proposes configurations and the deterministic simulator scores each one. Up to ${MAX_SIMULATIONS} simulations; you approve the result.`
+    ? `The AI agent proposes configurations and the deterministic simulator scores each one. Up to ${MAX_SIMULATIONS} simulations; you approve the result.`
     : `Offline optimizer: adjusts earn rates, annual fee, and benefit cost by fixed rules. Stops after ${MAX_SIMULATIONS} attempts.`;
   $("#chat-note").textContent = live
     ? "Answers are grounded in the current card, all persona results, and the latest optimization run."
@@ -218,7 +217,7 @@ function renderParseSummary(parsed) {
       ? list(parsed.rationale.map((item) => `<strong>${escapeHtml(item.field)}</strong> ${escapeHtml(item.change)}: <span class="muted">${escapeHtml(item.why)}</span>`))
       : "<p>No changes were needed.</p>";
     summary.innerHTML = `
-      <span class="ai-tag">Claude</span> ${rationale}
+      <span class="ai-tag">AI</span> ${rationale}
       ${parsed.assumptions.length ? `<p class="muted"><strong>Assumptions</strong></p>${list(parsed.assumptions.map(escapeHtml))}` : ""}
       ${parsed.unsupported.length ? `<p class="muted"><strong>Not modeled</strong></p>${list(parsed.unsupported.map(escapeHtml))}` : ""}`;
   } else {
@@ -436,9 +435,9 @@ async function runOptimization() {
     $("#agent-status").textContent = "Agent working";
     const list = $("#attempts-list");
     list.classList.remove("hidden");
-    list.innerHTML = '<div class="thinking">Claude is studying the persona and forming a first hypothesis…</div>';
+    list.innerHTML = '<div class="thinking">The agent is studying the persona and forming a first hypothesis…</div>';
     const progress = (attempts) => {
-      list.innerHTML = attempts.map(renderAttempt).join("") + '<div class="thinking">Claude is reading the simulator output…</div>';
+      list.innerHTML = attempts.map(renderAttempt).join("") + '<div class="thinking">The agent is reading the simulator output…</div>';
     };
     try {
       state.optimization = await runAgentOptimization(persona, objective, progress);
@@ -454,7 +453,7 @@ async function runOptimization() {
 }
 
 function renderAttempt(attempt) {
-  const label = attempt.source === "ai" ? '<b>Claude:</b> ' : "";
+  const label = attempt.source === "ai" ? '<b>Agent:</b> ' : "";
   return `<div class="attempt ${attempt.status.met ? "success" : ""}">
       <div class="attempt-top">
         <div class="attempt-title"><span class="attempt-number">${attempt.number}</span><strong>Attempt ${attempt.number}</strong></div>
@@ -478,7 +477,7 @@ function renderOptimization() {
   $("#attempts-list").classList.remove("hidden");
   $("#recommendation-card").classList.remove("hidden");
   const final = output.recommended;
-  $("#agent-status").textContent = `${output.mode === "live" ? "Claude agent" : "Offline rules"} · ${final.status.met ? "Objectives met" : "Review required"}`;
+  $("#agent-status").textContent = `${output.mode === "live" ? "AI agent" : "Offline rules"} · ${final.status.met ? "Objectives met" : "Review required"}`;
   $("#attempts-list").innerHTML = output.attempts.map(renderAttempt).join("");
 
   const rec = output.recommendation;
@@ -499,7 +498,7 @@ function renderOptimization() {
 
 function findingHtml(finding, source) {
   return `<div class="finding ${finding.severity}"><span class="finding-dot"></span><div>
-    <div class="finding-head"><strong>${escapeHtml(finding.title)}</strong><span class="ai-tag ${source === "rule" ? "rule" : ""}">${source === "rule" ? "Rule check" : "Claude"}</span></div>
+    <div class="finding-head"><strong>${escapeHtml(finding.title)}</strong><span class="ai-tag ${source === "rule" ? "rule" : ""}">${source === "rule" ? "Rule check" : "AI review"}</span></div>
     <p>${escapeHtml(finding.detail)}</p>
     ${finding.evidence ? `<p class="evidence">Evidence: ${escapeHtml(finding.evidence)}</p>` : ""}
   </div></div>`;
@@ -515,7 +514,7 @@ async function runClaimsCheck() {
     $("#claim-results").innerHTML = ruleFindings.map((finding) => findingHtml(finding, "rule")).join("");
     return { mode: "offline", findings: ruleFindings };
   }
-  $("#claim-results").innerHTML = '<div class="thinking">Claude is comparing the claim with the card terms and every persona result…</div>';
+  $("#claim-results").innerHTML = '<div class="thinking">The AI is comparing the claim with the card terms and every persona result…</div>';
   try {
     const data = await state.ai.provider.claims({
       claim,
@@ -523,13 +522,15 @@ async function runClaimsCheck() {
       portfolio: portfolioSummary(),
       ruleFindings: ruleFindings.filter((finding) => finding.severity !== "pass"),
     });
-    const findings = data.findings.length
-      ? data.findings.map((finding) => findingHtml(finding, "ai")).join("")
-      : findingHtml({ severity: "pass", title: "No inconsistencies found", detail: "The claim still requires human legal and compliance review." }, "ai");
-    $("#claim-results").innerHTML = findings;
-    $("#claim-rewrite-text").textContent = data.suggestedRewrite;
-    rewriteBox.classList.toggle("hidden", !data.suggestedRewrite);
-    return { mode: "live", ...data };
+    // Severity decides, not the model's verdict: only high or medium findings block a claim.
+    const ready = !data.findings.some((finding) => finding.severity === "high" || finding.severity === "medium");
+    const verdict = ready
+      ? findingHtml({ severity: "pass", title: "Ready for compliance review", detail: "No material inconsistencies with the card terms or simulated results. A person still makes the final call." }, "ai")
+      : "";
+    $("#claim-results").innerHTML = verdict + data.findings.map((finding) => findingHtml(finding, "ai")).join("");
+    $("#claim-rewrite-text").textContent = ready ? "" : data.suggestedRewrite;
+    rewriteBox.classList.toggle("hidden", ready || !data.suggestedRewrite);
+    return { mode: "live", ...data, ready };
   } catch (error) {
     showToast(`Live review unavailable (${error.message}); showing rule checks.`);
     $("#claim-results").innerHTML = ruleFindings.map((finding) => findingHtml(finding, "rule")).join("");
@@ -572,7 +573,7 @@ function renderChat(pending = false) {
     bubble.textContent = turn.text;
     log.append(bubble);
   }
-  if (pending) log.insertAdjacentHTML("beforeend", '<div class="thinking">Claude is reviewing the workspace…</div>');
+  if (pending) log.insertAdjacentHTML("beforeend", '<div class="thinking">The analyst is reviewing the workspace…</div>');
   log.scrollTop = log.scrollHeight;
 }
 
@@ -581,7 +582,7 @@ async function askAnalyst(question) {
   const trimmed = question.trim();
   if (!trimmed) return null;
   if (!liveMode()) {
-    state.chat.push({ role: "user", text: trimmed }, { role: "assistant", text: state.ai.provider ? "Chat needs live AI. Switch Live AI back on in the header." : "Chat needs live AI. Open this page inside Claude, or run the app with an Anthropic API key.", error: true });
+    state.chat.push({ role: "user", text: trimmed }, { role: "assistant", text: state.ai.provider ? "Chat needs live AI. Switch Live AI back on in the header." : "Chat needs live AI, which is not available on this page right now.", error: true });
     renderChat();
     return null;
   }
@@ -638,9 +639,9 @@ function wireEvents() {
     showToast(state.ai.enabled ? "Live AI on" : "Offline mode on: deterministic parser and optimizer");
   });
   $("#parse-button").addEventListener("click", (event) =>
-    withBusy(event.currentTarget, liveMode() ? "Claude is reading…" : "Parsing…", async () => {
+    withBusy(event.currentTarget, liveMode() ? "AI is reading…" : "Parsing…", async () => {
       const result = await createCardRules($("#brief-input").value);
-      showToast(result.mode === "live" ? "Claude created editable card rules" : "Editable card rules created");
+      showToast(result.mode === "live" ? "AI created editable card rules" : "Editable card rules created");
     }),
   );
   $("#apply-rules-button").addEventListener("click", () => {
@@ -656,7 +657,7 @@ function wireEvents() {
   $("#optimize-button").addEventListener("click", (event) =>
     withBusy(event.currentTarget, liveMode() && state.ai.provider.canOptimize ? "Agent running…" : "Running…", async () => {
       const output = await runOptimization();
-      showToast(output.mode === "live" ? `Claude tested ${output.attempts.length} configurations` : "Optimization loop completed");
+      showToast(output.mode === "live" ? `AI agent tested ${output.attempts.length} configurations` : "Optimization loop completed");
     }),
   );
   $("#accept-recommendation").addEventListener("click", () => {
@@ -668,7 +669,7 @@ function wireEvents() {
     openPanel("simulation-panel");
   });
   $("#check-claim-button").addEventListener("click", (event) =>
-    withBusy(event.currentTarget, liveMode() ? "Claude is reviewing…" : "Checking…", async () => {
+    withBusy(event.currentTarget, liveMode() ? "AI is reviewing…" : "Checking…", async () => {
       await runClaimsCheck();
       showToast("Claim checked against the current model");
     }),

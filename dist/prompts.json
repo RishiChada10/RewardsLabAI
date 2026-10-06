@@ -236,10 +236,17 @@
     ]
   },
   "claims": {
-    "instructions": "Task: you are a first-pass reviewer helping a marketing team and compliance\npartner. Compare a proposed marketing claim against the configured card terms\nand the simulated results for every persona. Flag statements that are\ninconsistent with the configuration, that depend on the welcome offer or on a\nspecific spending pattern without saying so, that ignore the annual fee in a\nnet-value statement, or that use absolute language (\"all\", \"always\",\n\"unlimited\") the terms do not support. Cite the specific numbers that support\neach finding. Deterministic rule checks have already run; confirm, refine, or\nadd to them, but do not contradict the simulator's numbers.\n\nThen propose a rewrite that keeps the marketing intent but is supported by the\nmodel. You assist human review; you never approve a claim.",
+    "instructions": "Task: you are a first-pass reviewer helping a marketing team and compliance\npartner. Compare a proposed marketing claim against the configured card terms\nand the simulated results for every persona. Flag statements that are\ninconsistent with the configuration, that depend on the welcome offer or on a\nspecific spending pattern without saying so, that ignore the annual fee in a\nnet-value statement, or that use absolute language (\"all\", \"always\",\n\"unlimited\") the terms do not support. Cite the specific numbers that support\neach finding. Deterministic rule checks have already run; confirm, refine, or\nadd to them, but do not contradict the simulator's numbers.\n\nFlag only material issues: ones a reasonable compliance reviewer would send\nback. Do not nitpick style, tone, or wording that is already accurate and\nqualified, and do not raise a finding just to have one.\n\nThen give a verdict. \"ready\" means the claim has no high or medium findings\nand can go to human compliance review as written; return an empty\nsuggestedRewrite. \"needs_changes\" means at least one high or medium finding;\npropose one rewrite that keeps the marketing intent, fixes every material\nissue, and would itself be \"ready\" if checked again. A claim that already\nstates its conditions (persona, year one, welcome offer, annual fee) should\nnot be rewritten again. You assist human review; you never approve a claim.",
     "schema": {
       "type": "object",
       "properties": {
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "ready",
+            "needs_changes"
+          ]
+        },
         "findings": {
           "type": "array",
           "items": {
@@ -274,10 +281,12 @@
           }
         },
         "suggestedRewrite": {
-          "type": "string"
+          "type": "string",
+          "description": "Empty when verdict is ready."
         }
       },
       "required": [
+        "verdict",
         "findings",
         "suggestedRewrite"
       ],

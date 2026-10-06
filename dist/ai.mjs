@@ -45,7 +45,7 @@ async function postJSON(route, body) {
 function serverProvider(model) {
   return {
     kind: "server",
-    label: { "claude-opus-5-5": "Claude Opus 5.5" }[model] || model || "Claude",
+    label: "Live AI",
     canOptimize: true,
     chatNeedsKey: false,
     parse: (brief, card) => postJSON("parse", { brief, card }),
@@ -88,18 +88,18 @@ function serverProvider(model) {
 // ---------------------------------------------------------------------------
 
 const SAMPLE_ERRORS = {
-  not_granted: "Claude access for this page was declined",
-  sampling_disabled: "Claude is not available for this account",
-  rate_limited: "Claude usage limit reached; try again later",
-  session_expired: "sign in to Claude again",
-  refused: "Claude declined this request",
-  invalid_json: "Claude's answer was not valid JSON",
+  not_granted: "AI access for this page was declined",
+  sampling_disabled: "AI is not available for this account",
+  rate_limited: "AI usage limit reached; try again later",
+  session_expired: "sign in again",
+  refused: "the AI declined this request",
+  invalid_json: "the AI's answer was not valid JSON",
   tools_unavailable: "this view cannot run the agent's tools",
   cancelled: "cancelled",
 };
 
 function sampleError(error) {
-  return new Error(SAMPLE_ERRORS[error?.code] || error?.message || "Claude request failed");
+  return new Error(SAMPLE_ERRORS[error?.code] || error?.message || "AI request failed");
 }
 
 function samplePrompt(prompts, task, data, format) {
@@ -113,13 +113,13 @@ function jsonFormat(schema) {
 function sampleProvider(sample, prompts, canUseTools) {
   return {
     kind: "sample",
-    label: "Claude (your account)",
+    label: "Live AI",
     canOptimize: canUseTools,
     async parse(brief, card) {
       const data = await sample
         .json(samplePrompt(prompts, "parse", `<current_configuration>${JSON.stringify(card)}</current_configuration>\n<brief>${brief}</brief>`, jsonFormat(prompts.parse.schema)))
         .catch((error) => { throw sampleError(error); });
-      if (!data?.card || typeof data.card !== "object") throw new Error("Claude's answer had no card configuration");
+      if (!data?.card || typeof data.card !== "object") throw new Error("The AI's answer had no card configuration");
       return {
         card: data.card,
         rationale: Array.isArray(data.rationale) ? data.rationale : [],
@@ -138,6 +138,7 @@ function sampleProvider(sample, prompts, canUseTools) {
         .json(samplePrompt(prompts, "claims", input, jsonFormat(prompts.claims.schema)))
         .catch((error) => { throw sampleError(error); });
       return {
+        verdict: data?.verdict === "ready" ? "ready" : "needs_changes",
         findings: (Array.isArray(data?.findings) ? data.findings : []).filter((item) => item?.title),
         suggestedRewrite: String(data?.suggestedRewrite || ""),
       };
@@ -180,12 +181,14 @@ export async function detectProvider() {
   try {
     prompts = await loadPrompts();
   } catch {
-    return { provider: null, reason: "AI prompts could not be loaded" };
+    return { provider: null, reason: "Live AI is off because prompts.json could not be loaded." };
   }
 
+  let serverWithoutKey = false;
   try {
     const health = await (await fetch("./api/health", { cache: "no-store" })).json();
     if (health.live) return { provider: serverProvider(health.model) };
+    serverWithoutKey = true;
   } catch {
     /* no backend: static host or Claude artifact */
   }
@@ -200,5 +203,10 @@ export async function detectProvider() {
     const limits = await sample.limits().catch(() => null);
     return { provider: sampleProvider(sample, prompts, Boolean(limits?.tools)) };
   }
-  return { provider: null, reason: "No AI backend and not opened inside Claude" };
+  return {
+    provider: null,
+    reason: serverWithoutKey
+      ? "Live AI is off because no Anthropic API key is set. Add it to the .env file and restart start.command."
+      : "Live AI is off. Run the app with an API key to turn it on.",
+  };
 }
