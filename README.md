@@ -32,7 +32,7 @@ dist/                Static front end (vanilla JS)
   economics.mjs      Deterministic economics engine and offline parser/optimizer
   app.js             UI, and the agent loop that runs simulate_card in the browser
 api/index.py         Claude backend: prompts, schemas, tools, and model settings
-server.py            Local server: serves dist/ and routes /api/* to api/index.py
+local_server.py      Local server: serves dist/ and routes /api/* to api/index.py
 tests/test_api.py    Backend tests with a fake Claude client (no API spend)
 vercel.json          Deployment config (static site + Python function)
 ```

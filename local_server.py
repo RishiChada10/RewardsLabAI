@@ -1,6 +1,6 @@
 """Local server: serves dist/ and routes /api/* to the same code Vercel runs.
 
-Usage: python server.py [port]
+Usage: python local_server.py [port]
 Reads ANTHROPIC_API_KEY from the environment or from a .env file next to this
 script. Without a key, the site still runs in offline mode.
 """

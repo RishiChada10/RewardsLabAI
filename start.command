@@ -19,4 +19,4 @@ if [ ! -f .env ] && [ -z "$ANTHROPIC_API_KEY" ]; then
 fi
 
 (sleep 1.5; open "http://localhost:8080") &
-.venv/bin/python server.py 8080
+.venv/bin/python local_server.py 8080

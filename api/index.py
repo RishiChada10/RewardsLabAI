@@ -9,7 +9,7 @@ For the optimization agent, Claude proposes a configuration through the
 `simulate_card` tool, the browser runs the simulator and returns the result,
 and Claude iterates. The model never computes the numbers itself.
 
-Runs as a Vercel Python function (`handler`) and is imported by server.py for
+Runs as a Vercel Python function (`handler`) and is imported by local_server.py for
 local use.
 """
 

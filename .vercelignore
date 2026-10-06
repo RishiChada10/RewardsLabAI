@@ -1,0 +1,8 @@
+# Local-only files: Vercel serves dist/ and runs api/index.py
+local_server.py
+start.command
+tests/
+scripts/
+build/
+RewardsLab_AI_Chat_Local*/
+*.zip
